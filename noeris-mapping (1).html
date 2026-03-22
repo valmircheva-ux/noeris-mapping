@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>NOERIS — Inner Cartography</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Montserrat:wght@200;300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #07070e;
+      --gold: #c4a35a;
+      --gold-dim: rgba(196,163,90,0.35);
+      --text: #e8e4dc;
+      --muted: #666;
+      --serif: 'Cormorant Garamond', Georgia, serif;
+      --sans: 'Montserrat', sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Grain texture ── */
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 999;
+    }
+
+    /* ── Progress bar ── */
+    #bar {
+      position: fixed; top: 0; left: 0; height: 1px;
+      background: var(--gold);
+      width: 0%; transition: width 0.6s ease;
+      z-index: 100;
+    }
+
+    /* ── NOERIS wordmark (persistent) ── */
+    #mark {
+      position: fixed; top: 28px; left: 50%; transform: translateX(-50%);
+      font-family: var(--serif);
+      font-size: 13px; letter-spacing: 0.45em;
+      color: var(--gold); opacity: 0.6;
+      font-weight: 300; z-index: 50;
+      transition: opacity 0.5s;
+    }
+
+    /* ── Screens ── */
+    .screen {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 90px 28px 50px;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.7s ease;
+      overflow-y: auto;
+    }
+    .screen.active { opacity: 1; pointer-events: all; }
+
+    /* ── Intro ── */
+    .intro-logo {
+      font-family: var(--serif);
+      font-size: clamp(52px, 18vw, 100px);
+      font-weight: 300; letter-spacing: 0.35em;
+      color: var(--gold);
+      line-height: 1;
+      animation: riseIn 1s ease both;
+    }
+    .intro-greek {
+      font-family: var(--serif); font-style: italic;
+      font-size: clamp(11px, 3vw, 14px);
+      letter-spacing: 0.15em;
+      color: var(--muted); margin-top: 10px;
+      animation: riseIn 1s 0.15s ease both;
+    }
+    .intro-rule {
+      width: 1px; height: 50px; background: var(--gold-dim);
+      margin: 36px auto;
+      animation: riseIn 1s 0.25s ease both;
+    }
+    .intro-body {
+      font-family: var(--serif);
+      font-size: clamp(17px, 5vw, 22px);
+      font-weight: 300; font-style: italic;
+      line-height: 1.75; text-align: center;
+      max-width: 440px;
+      animation: riseIn 1s 0.35s ease both;
+    }
+    .intro-sub {
+      font-family: var(--sans); font-size: 10px;
+      letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--muted); margin-top: 10px;
+      animation: riseIn 1s 0.45s ease both;
+    }
+
+    /* ── Button ── */
+    .btn {
+      margin-top: 42px;
+      background: transparent;
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      font-family: var(--sans); font-size: 10px;
+      font-weight: 400; letter-spacing: 0.3em;
+      text-transform: uppercase;
+      padding: 15px 42px; cursor: pointer;
+      transition: all 0.3s ease;
+      animation: riseIn 1s 0.6s ease both;
+    }
+    .btn:hover { background: var(--gold); color: var(--bg); }
+
+    /* ── Questions ── */
+    .q-num {
+      font-family: var(--sans); font-size: 9px;
+      letter-spacing: 0.35em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 28px;
+    }
+    .q-text {
+      font-family: var(--serif); font-style: italic;
+      font-size: clamp(20px, 6vw, 30px);
+      font-weight: 300; line-height: 1.5;
+      text-align: center; max-width: 560px;
+      margin-bottom: 44px;
+    }
+    .options { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 560px; }
+
+    .opt {
+      padding: 18px 24px;
+      border: 1px solid rgba(196,163,90,0.18);
+      background: rgba(255,255,255,0.015);
+      cursor: pointer;
+      font-family: var(--serif);
+      font-size: clamp(14px, 4vw, 17px);
+      font-weight: 300; line-height: 1.55;
+      text-align: left; color: var(--text);
+      position: relative; overflow: hidden;
+      transition: border-color 0.25s, background 0.25s;
+    }
+    .opt::before {
+      content: '';
+      position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+      background: var(--gold);
+      transform: scaleY(0); transform-origin: bottom;
+      transition: transform 0.25s ease;
+    }
+    .opt:hover { border-color: rgba(196,163,90,0.45); background: rgba(196,163,90,0.04); }
+    .opt:hover::before { transform: scaleY(1); }
+    .opt.chosen { border-color: var(--gold); background: rgba(196,163,90,0.07); }
+    .opt.chosen::before { transform: scaleY(1); }
+
+    /* ── Result ── */
+    .result-wrap {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 26px;
+      max-width: 640px; width: 100%;
+    }
+    .res-badge {
+      font-family: var(--sans); font-size: 9px;
+      letter-spacing: 0.35em; text-transform: uppercase;
+      color: var(--gold);
+    }
+    .res-archetype {
+      font-family: var(--serif); font-style: italic;
+      font-size: clamp(26px, 8vw, 44px);
+      font-weight: 300; text-align: center; line-height: 1.2;
+    }
+    .res-hrule {
+      width: 48px; height: 1px;
+      background: var(--gold-dim);
+    }
+    .brain-wrap { width: min(340px, 88vw); }
+    .brain-wrap svg { width: 100%; height: auto; display: block; }
+
+    .res-region {
+      font-family: var(--sans); font-size: 9px;
+      letter-spacing: 0.3em; text-transform: uppercase;
+      color: var(--gold);
+    }
+    .res-desc {
+      font-family: var(--serif); font-weight: 300;
+      font-size: clamp(15px, 4vw, 18px);
+      line-height: 1.8; text-align: center;
+      max-width: 520px; color: var(--text);
+    }
+    .res-protocol {
+      border-top: 1px solid rgba(196,163,90,0.2);
+      padding-top: 20px; width: 100%;
+      font-family: var(--sans); font-size: 9px;
+      letter-spacing: 0.2em; text-transform: uppercase;
+      color: rgba(196,163,90,0.7); text-align: center;
+      line-height: 2;
+    }
+
+    /* ── Animations ── */
+    @keyframes riseIn {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .screen.active .q-num   { animation: riseIn 0.7s 0.05s ease both; }
+    .screen.active .q-text  { animation: riseIn 0.7s 0.15s ease both; }
+    .screen.active .options { animation: riseIn 0.7s 0.28s ease both; }
+
+    .result-wrap > * { animation: riseIn 0.8s ease both; }
+    .result-wrap > *:nth-child(1) { animation-delay: 0.00s; }
+    .result-wrap > *:nth-child(2) { animation-delay: 0.10s; }
+    .result-wrap > *:nth-child(3) { animation-delay: 0.18s; }
+    .result-wrap > *:nth-child(4) { animation-delay: 0.28s; }
+    .result-wrap > *:nth-child(5) { animation-delay: 0.36s; }
+    .result-wrap > *:nth-child(6) { animation-delay: 0.46s; }
+    .result-wrap > *:nth-child(7) { animation-delay: 0.56s; }
+    .result-wrap > *:nth-child(8) { animation-delay: 0.66s; }
+
+    @keyframes pulseGlow {
+      0%,100% { opacity: 0.88; }
+      50%      { opacity: 1; }
+    }
+    .glow-region { animation: pulseGlow 2.6s ease-in-out infinite; }
+
+    /* Ambient light blob */
+    .ambient {
+      position: fixed; width: 500px; height: 500px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(196,163,90,0.05) 0%, transparent 65%);
+      top: 50%; left: 50%; transform: translate(-50%,-50%);
+      pointer-events: none; z-index: 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="ambient"></div>
+<div id="bar"></div>
+<div id="mark">NOERIS</div>
+
+<!-- ═══════ INTRO ═══════ -->
+<div class="screen active" id="s-intro">
+  <div class="intro-logo">NOERIS</div>
+  <div class="intro-greek">νόησις — the direct, unmediated perception of truth</div>
+  <div class="intro-rule"></div>
+  <p class="intro-body">Three questions.<br>One quiet revelation.</p>
+  <p class="intro-sub">A fragment of your inner cartography</p>
+  <button class="btn" onclick="go('s-q1'); setBar(33)">Begin the mapping</button>
+</div>
+
+<!-- ═══════ Q1 ═══════ -->
+<div class="screen" id="s-q1">
+  <div class="q-num">Question 01 · 03</div>
+  <div class="q-text">"At this point in your life, what finds you most often in the quiet?"</div>
+  <div class="options">
+    <div class="opt" onclick="answer(0,'PFC',this)">The noise of unfinished decisions — a mind that will not stand down</div>
+    <div class="opt" onclick="answer(0,'AMY',this)">An anxiety I cannot locate, or trace back to its source</div>
+    <div class="opt" onclick="answer(0,'HIPP',this)">A growing distance from the person I once recognised as myself</div>
+    <div class="opt" onclick="answer(0,'DMN',this)">The quiet suspicion that some deeper why — is still missing</div>
+  </div>
+</div>
+
+<!-- ═══════ Q2 ═══════ -->
+<div class="screen" id="s-q2">
+  <div class="q-num">Question 02 · 03</div>
+  <div class="q-text">"When you imagine yourself five years from now, what do you feel?"</div>
+  <div class="options">
+    <div class="opt" onclick="answer(1,'PFC',this)">More of the same — more doing, more achieving, less arriving</div>
+    <div class="opt" onclick="answer(1,'AMY',this)">A quiet dread I allow myself no time to examine</div>
+    <div class="opt" onclick="answer(1,'HIPP',this)">I struggle to picture who that person actually is</div>
+    <div class="opt" onclick="answer(1,'DMN',this)">A sense that I may have been asking the wrong questions entirely</div>
+  </div>
+</div>
+
+<!-- ═══════ Q3 ═══════ -->
+<div class="screen" id="s-q3">
+  <div class="q-num">Question 03 · 03</div>
+  <div class="q-text">"What would it feel like to be genuinely transformed?"</div>
+  <div class="options">
+    <div class="opt" onclick="answer(2,'PFC',this)">To think clearly again — to choose, rather than simply react</div>
+    <div class="opt" onclick="answer(2,'AMY',this)">To exist without the low-level alarm that never fully turns off</div>
+    <div class="opt" onclick="answer(2,'HIPP',this)">To remember — or finally discover — who I actually am</div>
+    <div class="opt" onclick="answer(2,'DMN',this)">To find a framework of meaning that holds</div>
+  </div>
+</div>
+
+<!-- ═══════ RESULT ═══════ -->
+<div class="screen" id="s-result">
+  <div class="result-wrap" id="result-content"></div>
+</div>
+
+<script>
+/* ─────────────────────────── DATA ─────────────────────────── */
+const REGIONS = {
+  PFC: {
+    name:      'Prefrontal Cortex',
+    archetype: 'The Exhausted Commander',
+    color:     '#6eb5e8',
+    glow:      'rgba(110,181,232,0.55)',
+    desc: 'Your prefrontal cortex has been operating at maximum capacity for too long. The seat of executive function, decision-making, and self-regulation — it is also the first casualty of sustained high performance. What presents as drive is often its mirror: a mind that cannot stop commanding because it no longer knows how to rest. The clarity you seek is not more information. It is the permission to pause.',
+    protocol: 'Inner Cartography Protocol\nMAP — Cognitive baseline · decision-load assessment\nIMMERSE — Attentional reset · contemplative deep-work\nINTEGRATE — Restored executive presence'
+  },
+  AMY: {
+    name:      'Amygdala',
+    archetype: 'The Silent Alarm',
+    color:     '#e07a82',
+    glow:      'rgba(224,122,130,0.55)',
+    desc: 'Your amygdala — the brain\'s sentinel — has been recalibrated by years of high-stakes environments. What was designed as a threat-detection system has become permanently sensitised. The body carries what the mind refuses to acknowledge: a low-grade vigilance that never fully releases. The work is not to silence the alarm. It is to finally feel safe enough that it no longer needs to sound.',
+    protocol: 'Inner Cartography Protocol\nMAP — Somatic & emotional baseline\nIMMERSE — Nervous system reset · ancient ritual · sensory immersion\nINTEGRATE — Embodied regulation tools'
+  },
+  HIPP: {
+    name:      'Hippocampus',
+    archetype: 'The Lost Map',
+    color:     '#82c97a',
+    glow:      'rgba(130,201,122,0.55)',
+    desc: 'The hippocampus holds memory, identity, and the continuity of self. In periods of extreme external focus, it is systematically neglected — the interior goes unmapped while the exterior is meticulously built. The result is a peculiar dislocation: having constructed an extraordinary life, yet feeling like a stranger within it. What is called for is not reinvention. It is remembering.',
+    protocol: 'Inner Cartography Protocol\nMAP — Identity & narrative assessment\nIMMERSE — Memory integration · nature immersion · inner dialogue\nINTEGRATE — Selfhood reconstruction'
+  },
+  DMN: {
+    name:      'Default Mode Network',
+    archetype: 'The Unanswered Question',
+    color:     '#b57ed6',
+    glow:      'rgba(181,126,214,0.55)',
+    desc: 'The Default Mode Network activates in stillness — it is the neural architecture of self-reflection, meaning-making, and the search for coherent narrative. In high-performers, it is chronically suppressed by constant output. When it finally speaks, it speaks in the language of existential searching. What it asks for is not an answer. It is permission to ask — in a space built for exactly that.',
+    protocol: 'Inner Cartography Protocol\nMAP — Meaning & values cartography\nIMMERSE — Philosophical depth work · contemplative art · silence\nINTEGRATE — Purposeful architecture for the years ahead'
+  }
+};
+
+/* Region SVG geometry (viewBox 0 0 420 310) */
+const R_PATHS = {
+  PFC: {
+    d: 'M110,95 C112,70 130,52 158,48 C180,44 200,54 208,72 C216,90 210,110 194,120 C176,131 150,130 134,118 C118,106 108,114 110,95Z',
+    lx: 160, ly: 86, label: 'Prefrontal\nCortex'
+  },
+  AMY: {
+    d: 'M222,196 C228,180 244,173 258,177 C272,181 280,195 276,210 C272,224 257,230 243,225 C229,220 217,212 222,196Z',
+    lx: 249, ly: 202, label: 'Amygdala'
+  },
+  HIPP: {
+    d: 'M188,228 C196,210 218,205 236,212 C250,218 256,232 249,248 C242,263 222,268 206,260 C190,252 181,245 188,228Z',
+    lx: 218, ly: 237, label: 'Hippocampus'
+  },
+  DMN: {
+    d: 'M260,80 C274,60 305,58 323,76 C338,90 337,115 320,126 C301,137 272,132 258,116 C246,102 248,96 260,80Z',
+    lx: 293, ly: 98, label: 'Default Mode\nNetwork'
+  }
+};
+
+/* ─────────────────────────── STATE ─────────────────────────── */
+const ans = [null, null, null];
+
+/* ─────────────────────────── NAVIGATION ─────────────────────── */
+function go(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function setBar(pct) {
+  document.getElementById('bar').style.width = pct + '%';
+}
+
+function answer(idx, region, el) {
+  ans[idx] = region;
+  el.classList.add('chosen');
+
+  setTimeout(() => {
+    if (idx === 0) { go('s-q2'); setBar(66); }
+    else if (idx === 1) { go('s-q3'); setBar(100); }
+    else { showResult(); }
+  }, 380);
+}
+
+/* ─────────────────────────── RESULT ─────────────────────────── */
+function showResult() {
+  const tally = {};
+  ans.forEach(a => { if (a) tally[a] = (tally[a]||0)+1; });
+  const winner = Object.entries(tally).sort((a,b)=>b[1]-a[1])[0][0];
+  const R = REGIONS[winner];
+
+  document.getElementById('result-content').innerHTML = `
+    <div class="res-badge">Your Inner Map</div>
+    <div class="res-archetype">${R.archetype}</div>
+    <div class="res-hrule"></div>
+    <div class="brain-wrap">${buildBrain(winner, R)}</div>
+    <div class="res-region">${R.name}</div>
+    <div class="res-desc">${R.desc}</div>
+    <div class="res-protocol">${R.protocol.replace(/\n/g,'<br>')}</div>
+    <button class="btn" onclick="restart()">Map again</button>
+    <div style="font-family:'Montserrat',sans-serif;font-size:9px;letter-spacing:0.12em;color:rgba(255,255,255,0.2);text-align:center;line-height:1.8;margin-top:8px;max-width:400px;">
+      This is a conceptual reflection tool inspired by neuroscience,<br>not a clinical assessment or diagnostic instrument.
+    </div>
+  `;
+
+  go('s-result');
+}
+
+function restart() {
+  ans[0] = ans[1] = ans[2] = null;
+  setBar(0);
+  // Reset option states
+  document.querySelectorAll('.opt').forEach(o => o.classList.remove('chosen'));
+  go('s-intro');
+}
+
+/* ─────────────────────────── BRAIN SVG ─────────────────────── */
+function buildBrain(activeKey, R) {
+  /* Gyri texture lines */
+  const gyri = [
+    'M90,120 C118,104 152,108 172,124',
+    'M78,158 C108,140 146,144 168,162',
+    'M82,196 C114,180 148,183 170,200',
+    'M228,110 C258,94 292,98 316,114',
+    'M234,148 C262,132 296,136 318,152',
+    'M230,186 C260,170 292,174 315,190',
+    'M145,228 C168,214 198,217 218,230',
+    'M175,256 C200,244 228,247 250,258',
+  ].map(d => `<path d="${d}" fill="none" stroke="rgba(255,255,255,0.055)" stroke-width="1.2" stroke-linecap="round"/>`).join('');
+
+  /* Region paths */
+  let regions = '';
+  for (const [key, rp] of Object.entries(R_PATHS)) {
+    const active = key === activeKey;
+    const col = active ? R.color : 'rgba(255,255,255,0.04)';
+    const stroke = active ? R.color : 'rgba(255,255,255,0.12)';
+    const sw = active ? 1.5 : 0.8;
+    const op = active ? 0.92 : 0.55;
+    const cls = active ? 'glow-region' : '';
+
+    const lines = rp.label.split('\n');
+    const dyStart = lines.length > 1 ? -5 : 0;
+    const labelTspans = lines.map((l,i) =>
+      `<tspan x="${rp.lx}" dy="${i===0 ? dyStart : 11}">${l}</tspan>`
+    ).join('');
+
+    regions += `
+      <path d="${rp.d}"
+        fill="${col}" stroke="${stroke}" stroke-width="${sw}"
+        opacity="${op}" class="${cls}"
+        style="${active ? `filter:drop-shadow(0 0 8px ${R.glow}) drop-shadow(0 0 16px ${R.glow});` : ''}"
+      />
+      <text x="${rp.lx}" y="${rp.ly}"
+        text-anchor="middle"
+        font-family="Montserrat,sans-serif"
+        font-size="${active ? 7.5 : 6.5}"
+        font-weight="${active ? 500 : 300}"
+        fill="${active ? R.color : 'rgba(255,255,255,0.25)'}"
+        letter-spacing="0.04em">
+        ${labelTspans}
+      </text>`;
+  }
+
+  /* Brain outline path (lateral schematic) */
+  const outline = 'M198,28 C238,24 292,38 328,66 C362,92 378,132 374,172 C370,208 352,240 326,260 C304,276 276,283 252,280 C232,277 215,268 205,258 C195,268 178,277 158,280 C134,283 106,276 84,260 C58,240 40,208 36,172 C32,132 48,92 82,66 C118,38 162,24 198,28Z';
+
+  /* Corpus callosum hint */
+  const callosum = 'M170,178 C190,168 232,168 252,178';
+
+  return `
+  <svg viewBox="0 0 420 310" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <clipPath id="bc"><path d="${outline}"/></clipPath>
+      <radialGradient id="bg" cx="50%" cy="45%" r="55%">
+        <stop offset="0%" stop-color="rgba(255,255,255,0.04)"/>
+        <stop offset="100%" stop-color="rgba(255,255,255,0.01)"/>
+      </radialGradient>
+    </defs>
+
+    <!-- Outer ambient glow -->
+    <path d="${outline}" fill="none" stroke="rgba(196,163,90,0.06)" stroke-width="20"/>
+
+    <!-- Brain fill -->
+    <path d="${outline}" fill="url(#bg)"/>
+
+    <!-- Gyri texture (clipped) -->
+    <g clip-path="url(#bc)">${gyri}</g>
+
+    <!-- Regions (clipped) -->
+    <g clip-path="url(#bc)">${regions}</g>
+
+    <!-- Corpus callosum -->
+    <path d="${callosum}" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2" stroke-linecap="round" clip-path="url(#bc)"/>
+
+    <!-- Brain border -->
+    <path d="${outline}" fill="none" stroke="rgba(196,163,90,0.38)" stroke-width="1.5"/>
+
+    <!-- Brainstem -->
+    <path d="M182,280 C183,295 184,308 188,316 M222,280 C221,295 220,308 216,316"
+      fill="none" stroke="rgba(196,163,90,0.22)" stroke-width="1.8" stroke-linecap="round"/>
+  </svg>`;
+}
+</script>
+</body>
+</html>
